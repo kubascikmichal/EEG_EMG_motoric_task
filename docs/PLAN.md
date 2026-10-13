@@ -23,7 +23,7 @@ and linear/statistical models vs. neural networks.
   - EEG vs. EMG start offsets on that clock are up to **1.36 s** (sub-1 ses-2 [time removed]), and 0.6–0.7 s in two of sub-3's runs.
   - → Build sync from the `.db` files, not the CSVs.
 - **Naming collision:** sub-1 ses-S002 has two different recordings both named `run-001` ([time removed] and [time removed]).
-- Sessions are interleaved within one evening, so a session is a condition, not a day.
+- Sessions are interleaved within one evening; per the user, all sessions are the same task (see decision 2).
 - **Signal quality:**
   - The unit metadata says µV, but EEG values are about 0.02, which looks like volts. Verify the scaling.
   - EEG `contact_*` is always 0 and EMG `contact_*` is about 1. Either the conventions differ or the EEG flag isn't reported.
@@ -36,7 +36,7 @@ and linear/statistical models vs. neural networks.
 | # | Question | Answer |
 |---|----------|--------|
 | 1 | Label source | "yes", interpreted as **(a) protocol timing**. **TODO: provide the cue sequence and phase durations** (and whether the timing is identical for every run). |
-| 2 | Session meaning | "yes": **ses-1 = motor execution, ses-2 = kinesthetic motor imagery (KMI)**. **TODO: confirm the direction.** In KMI runs the EMG should be silent → EMG detection acts as a check for muscle activity leaking into imagery. |
+| 2 | Session meaning | **All sessions are the same task/condition**; each recording = EEG + EMG of the same activity. Sessions are treated as equivalent repetitions (more data per subject, usable as CV folds). Note: devices share one clock, but their recordings start at different instants (up to 1.36 s), and the CSV `time` resets to 0 per device, so alignment must use the `.db` timestamps. |
 | 3 | Duplicate run-001 (sub-1 ses-2) | open. Proposal: renumber by time ([time removed] → run-01, [time removed] → run-02). |
 | 4 | Output layout and format | open. Proposal: `dataset/processed/ses-01/sub-01_ses-01_task-fusion_run-01_{EEG,EMG}.parquet` plus a sidecar `.json` (sf, channels, start offset relative to the run). CSV is possible if preferred. |
 | 5 | Rewrite git history to remove original filenames | open. |
