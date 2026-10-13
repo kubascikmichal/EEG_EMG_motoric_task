@@ -1,7 +1,20 @@
 # EEG / EMG hand-movement classification — findings & plan
 
-Status: **consultation done, nothing implemented yet** (2026-10-13).
+Status: **consultation done, nothing implemented — BLOCKED on open questions below** (2026-10-13).
 Original task: [prompts/init.md](../prompts/init.md).
+
+> [!CAUTION]
+> **DO NOT IMPLEMENT OR RUN ANYTHING YET.** No scripts, no notebooks, no changes to `dataset/`.
+> This applies to people and AI assistants. Wait until the owner has answered every question below
+> and recorded the answers in the decisions table (section 2).
+>
+> Open questions:
+> 1. **Labels:** what was the protocol timing? Give the cue sequence and the duration of each phase
+>    (opening / opened / closing / closed, plus any rest), and say whether it is identical for every run.
+> 2. **Duplicate run-001 (sub-1 ses-2):** renumber by time ([time removed] → run-01, [time removed] → run-02)?
+> 3. **Output layout and format:** `processed/ses-XX/…` or BIDS-style `sub-XX/ses-XX/…`? CSV or Parquet?
+>    What should happen to the existing `csv/transformed/` and `raw/` folders?
+> 4. **Git history:** rewrite it to remove the original filenames and data, or is local anonymization enough?
 
 Goal: classify hand movement phases (opening, opened, closing, closed) from
 bioelectric signals only (no IMU), comparing EEG-only, EMG-only and fusion,
