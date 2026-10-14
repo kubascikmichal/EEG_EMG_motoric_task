@@ -1,0 +1,11 @@
+# Original recordings: names contain dates, device serials and UUIDs (decision 5)
+dataset/raw/
+dataset/csv/original/
+dataset/csv/transformed/
+
+__pycache__/
+*.egg-info/
+.ipynb_checkpoints/
+
+# Built by scripts/01_build_dataset.py (not tracked)
+dataset/processed/
