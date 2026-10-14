@@ -40,3 +40,21 @@ def test_saturation_mask_margin():
     bad = saturation_mask(x, 2.2e6, sf=100.0, margin_s=0.02)
     assert bad.sum() == 5 and bad[48:53].all()
     assert not saturation_mask(x, None, 100.0, 0.02).any()
+
+
+def test_label_run_finds_synthetic_bursts():
+    from emgeeg.labels import MOVING, label_run
+
+    rng = np.random.default_rng(1)
+    sf, dur = 500.0, 60.0
+    t = np.arange(int(sf * dur)) / sf
+    amp = np.full_like(t, 10.0)
+    onsets = np.arange(5.0, 50.0, 2.5)
+    for o in onsets:
+        amp[(t >= o) & (t < o + 0.8)] = 100.0
+    x = rng.standard_normal((8, t.size)) * amp
+    segments, lab, _ = label_run(x, t, sf)
+    moving = segments[segments.label == MOVING]
+    assert len(moving) == len(onsets)
+    assert np.allclose(moving.onset_s.to_numpy(), onsets, atol=0.25)
+    assert np.allclose((moving.offset_s - moving.onset_s).to_numpy(), 0.8, atol=0.4)

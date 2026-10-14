@@ -1,14 +1,13 @@
 # EEG / EMG hand-movement classification — findings & plan
 
-Status: **step 1 (dataset build) implemented (2026-10-14); step 2a waits for the starting hand state.**
+Status: **steps 1 and 2a implemented (2026-10-14); history rewritten and pushed. Labels await the owner's review.**
 Original task: [prompts/init.md](../prompts/init.md).
 
 > [!CAUTION]
-> - **Git history rewrite (decision 6):** do not run it without the owner's explicit go-ahead at that moment.
-> - **Labels (decision 1):** the labels come from the EMG envelope. Review the labelling method (step 2a) and
->   the circularity caveat with the owner before training any model.
+> - **Labels (decision 1):** moving / still from the EMG envelope. The owner should check the review plots
+>   (`dataset/processed/review/`) and the circularity caveat before any model is trained.
 
-Goal: classify hand movement phases (opening, opened, closing, closed) from
+Goal: detect hand movement (moving vs. still; the 4 phases can't be told apart, see decision 1) from
 bioelectric signals only (IMU not used at all, not even for labels), comparing EEG-only, EMG-only and fusion,
 and linear/statistical models vs. neural networks.
 
@@ -44,12 +43,12 @@ and linear/statistical models vs. neural networks.
 
 | # | Question | Answer |
 |---|----------|--------|
-| 1 | Label source | **No protocol timing is available. Labels come from the EMG envelope** (step 2a). Caveat: the EMG-only model is then partly predicting its own labels, so its scores are inflated and the comparisons of EEG vs. EMG vs. fusion are biased toward EMG. Mitigations are in step 2a. |
+| 1 | Label source | **No protocol timing is available. Labels come from the EMG envelope** (step 2a). **Task reduced to 2 classes, moving vs. still** (owner, 2026-10-14): the EMG bursts show no opening/closing alternation (consecutive bursts are as alike in channel profile as bursts two apart; two-cluster k-means follows slow drift, not alternation), so the 4 phases can't be labelled reliably. Caveat: the EMG-only model is partly predicting its own labels, so its scores are inflated and the comparisons of EEG vs. EMG vs. fusion are biased toward EMG. Mitigations are in step 2a. |
 | 2 | Session meaning | **All sessions are the same task/condition**; each recording = EEG + EMG of the same activity. Sessions are treated as equivalent repetitions (more data per subject, usable as CV folds). Note: alignment uses the `.db` chunk arrival clock (see section 1, Sync). |
 | 3 | Duplicate run-001 (sub-1 ses-2) | **Number runs by session**: within each subject + session, runs are numbered in time order. Result: sub-1 ses-2 earlier → run-01, later → run-02. All other recordings already follow this rule, so their numbers don't change. |
 | 4 | Output layout and format | **`dataset/processed/ses-XX/` + CSV**: `dataset/processed/ses-01/sub-01_ses-01_task-fusion_run-01_{EEG,EMG}.csv` plus a sidecar `.json` (sf, channels, start offset relative to the run). Implemented. |
 | 5 | Existing `csv/original/`, `csv/transformed/` and `raw/` | **Add all three to `.gitignore`** and purge them from history (decision 6). They stay on disk, since the build still reads `raw/*.db`, but are no longer tracked. |
-| 6 | Git history | **Rewrite history** (e.g. `git filter-repo`) to purge the original filenames and data, then force-push. Do this after step 1 is done and verified, and confirm with the owner right before running it. |
+| 6 | Git history | **Rewritten and force-pushed (2026-10-14)**: `dataset/` removed from every commit, recording dates/times replaced in old PLAN.md versions. The repo is private with no forks or PRs; the old commit stays reachable on GitHub by its SHA until GitHub garbage-collects it (GitHub Support can purge it). |
 | 7 | IMU | **Not used at all**: not as model input, not for labels or label validation. Dropped in step 1. |
 
 ## 3. Plan
@@ -62,21 +61,19 @@ Run: `python scripts/01_build_dataset.py [--check-csv]` (~30 s; settings in `con
 - Sidecar `.json`: subject/session/task/run, channels, nominal and effective sf, start offset, removed filler, bad samples, timing fit quality. `dataset/processed/runs.csv` summarizes all runs.
 - No date, time, serial, UUID or absolute clock value is written (checked with a grep).
 - `.gitignore` covers `dataset/raw/`, `dataset/csv/original/` and `dataset/csv/transformed/`.
-- Open: `dataset/processed/` (424 MB of CSV) is neither committed nor ignored yet.
+- `dataset/processed/` is gitignored (owner, 2026-10-14); rebuild it with the script.
 
-### Step 2a — labels from the EMG envelope (script `scripts/02_make_labels.py`; review with the owner)
-- **Envelope:** take the band-passed EMG (20–240 Hz, 50 Hz notch), rectify it, low-pass at about 3–6 Hz, and normalize each channel per run (e.g. to a percentile of its maximum).
-- **Segmentation:** use a double threshold with hysteresis plus minimum durations to mark active and rest segments.
-  - Opening and closing are the envelope bursts.
-  - Opened and closed are the holds between bursts.
-  - Telling opening from closing (and opened from closed): there is no extensor/flexor channel split, since all channels cover the forearm (owner, 2026-10-14). The movements are a repeated cycle, so the bursts alternate between opening and closing.
-    1. Group the bursts into two clusters by their spatial pattern (per-channel envelope profile).
-    2. Check that the clusters alternate. Where they don't (a missed or extra burst), flag the spot for manual review.
-    3. Name each cluster opening or closing from the hand's starting state. **Open: does the hand start opened or closed in every run?**
-    4. Each hold takes its name from the movement before it (opened after opening, closed after closing).
-- **Review:** plot every run with its labels overlaid, fix them by hand where needed, and save `_labels.csv` (onset, offset, phase) next to each run.
+### Step 2a — moving / still labels from the EMG envelope (`scripts/02_make_labels.py`) — DONE, awaiting review
+Run: `python scripts/02_make_labels.py` (~5 s; settings under `labels:` in `config.yaml`; code in `src/emgeeg/labels.py`).
+- **Envelope:** 50 Hz-harmonic notches, 20–240 Hz band-pass, rectify, 2 Hz low-pass, each channel normalized to its run's 95th percentile, channels averaged.
+- **Levels per run:** rest = 10th percentile; burst = median height of envelope peaks ≥1 s apart that rise at least 50% above rest (robust to artifacts and to runs that are mostly rest).
+- **Moving:** hysteresis between rest + 0.35 and rest + 0.15 × (burst − rest); gaps < 0.2 s merged, bursts < 0.2 s dropped.
+- **Artifact:** envelope > rest + 3 × (burst − rest), or the build's `bad` samples; padded 0.5 s, merged across gaps < 2 s. Artifact windows are excluded from training and scoring.
+- **Output:** `ses-XX/<run>_labels.csv` (onset_s, offset_s, label ∈ moving/still/artifact, on the run's shared clock), `labels_summary.csv`, and review plots in `review/` (60 s per row, thresholds drawn).
+- **Result:** 1025 bursts in 12 runs; median burst 0.94–1.37 s, one every 1.9–2.9 s (except sub-3 ses-2 r2); moving ≈ 51% of the non-artifact time.
+- **Needs review:** sub-3 ses-2 r2 has ~23 s of task and then mostly rest; its first 16 s are marked artifact and 23–36 s is a slow decay labelled moving. Candidate for exclusion. In vigorous stretches neighbouring bursts merge into one longer "moving" segment (harmless for 2 classes).
 - **Limiting circularity (decision 1):**
-  - Smooth the labelling envelope much more heavily than the EMG classifier's features, and use its own thresholds, so the classifier can't simply learn the labelling rule back.
+  - The labelling envelope (2 Hz) is much slower than the classifier's 500 ms window features and uses its own thresholds.
   - Report EMG-only results as an upper bound or a consistency check, not a fair competitor.
   - The main comparison is EEG vs. fusion.
   - Optional: split the EMG channels so that some make the labels and the others feed the classifier.
@@ -85,7 +82,7 @@ Run: `python scripts/01_build_dataset.py [--check-csv]` (~30 s; settings in `con
 - **Sync:** use the shared clock and a common window grid (e.g. 500 ms windows, 100 ms step). Each device keeps its native sampling rate.
 - **EEG:** 50 Hz notch, 1–40 Hz band-pass, common average reference, sensorimotor channels (C3/Cz/C4/FC*/CP*), mu/beta ERD/ERS. ICA optional (no eye channel).
 - **EMG:** 20–240 Hz band-pass, 50 Hz notch, RMS envelope, Hudgins time-domain features (MAV, WL, ZC, SSC).
-- **Labels:** load them from step 2a and map them onto the window grid (each window takes the majority label; drop windows that straddle a transition, or mark them).
+- **Labels:** load them from step 2a and map them onto the window grid (each window takes the majority label; drop windows that straddle a transition or touch an artifact).
 - **Fusion:**
   - early: concatenate the EEG and EMG features;
   - late: average or stack the two models' probabilities;
@@ -111,7 +108,7 @@ Run: `python scripts/01_build_dataset.py [--check-csv]` (~30 s; settings in `con
   - Wilcoxon tests for EEG vs. EMG vs. fusion.
 
 ### Extra suggestions
-- Add a 2-class task (moving vs. still) alongside the 4-class one. EEG can hardly separate the static "opened" and "closed" holds.
+- Movement onset detection (event-level): latency of EEG/fusion detection relative to EMG onset.
 - Report a learning curve: neural networks will probably overfit with about 50 min of data.
 - Artifact check: make sure the EEG classifier isn't really using EMG or motion artifacts (look at the feature topography and high-frequency power).
 - Corticomuscular coherence: a sanity check for the sync and a possible fusion feature.
@@ -131,9 +128,5 @@ tests/
 Stack: numpy, pandas, scipy, mne, scikit-learn, pyriemann, torch + braindecode.
 
 ## Next steps
-1. ~~Implement step 1~~ done. Verify the sync in step 2 (EMG onsets vs. EEG movement-related potentials / beta ERD).
-2. Owner: commit `dataset/processed/` or gitignore it?
-3. Rewrite git history (decision 6), with the owner's go-ahead right before running it.
-4. Owner: say whether the hand starts opened or closed in each run (channel layout and cycle answered: all channels, repeated cycle).
-5. Step 2a: labels, reviewed with the owner on the plots.
-6. Notebook: baselines first, then neural networks, then fusion.
+1. Owner: look through `dataset/processed/review/*.png`; decide on sub-3 ses-2 r2 (exclude or keep) and flag any other wrong stretches.
+2. Notebook: verify the sync (EMG onsets vs. EEG movement-related potentials / beta ERD), then baselines, neural networks and fusion on the 2-class task.

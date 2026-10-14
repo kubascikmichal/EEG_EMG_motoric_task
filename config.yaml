@@ -12,3 +12,17 @@ build:
     # EMG clips at ±2.25 V; the EEG range limit is unknown (DC offset is ~15–26 mV, no clipping seen).
     saturation_uv: {EEG: null, EMG: 2200000.0}
     margin_s: 0.05          # bad mask is widened by this much on each side
+
+labels:                     # step 2a: moving / still from the EMG envelope (decision 1)
+  envelope:
+    band: [20.0, 240.0]
+    lowpass_hz: 2.0         # slower than the classifier's features on purpose (circularity)
+  artifact:
+    factor: 3.0             # envelope > rest + factor × (burst - rest) -> artifact
+    pad_s: 0.5
+    merge_s: 2.0
+  active:
+    high: 0.35              # burst starts above rest + high × (burst - rest)
+    low: 0.15               # ... and lasts while above rest + low × (burst - rest)
+    min_gap_s: 0.2
+    min_burst_s: 0.2

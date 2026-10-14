@@ -47,7 +47,7 @@ def _load_blob(blob: bytes) -> np.ndarray:
 
 def read_db(path: str | Path) -> dict[str, DeviceRecording]:
     """Read both devices from one .db file, keyed by modality."""
-    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+    con = sqlite3.connect(f"file:{path}?mode=ro&immutable=1", uri=True)  # immutable: no -wal/-shm files
     try:
         out: dict[str, DeviceRecording] = {}
         metas = [n for (n,) in con.execute(
