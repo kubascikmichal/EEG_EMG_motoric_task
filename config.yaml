@@ -1,0 +1,14 @@
+paths:
+  raw: dataset/raw                  # source .db files (gitignored)
+  csv_original: dataset/csv/original  # only used by --check-csv (gitignored)
+  processed: dataset/processed
+
+build:
+  timing:
+    smooth_s: 20.0          # running-median window for slow clock wander (s)
+    latency_quantile: 0.05  # minimum transfer latency = this quantile of arrival residuals
+  quality:
+    # |value| >= limit (µV) on any channel marks the sample bad; null = no check.
+    # EMG clips at ±2.25 V; the EEG range limit is unknown (DC offset is ~15–26 mV, no clipping seen).
+    saturation_uv: {EEG: null, EMG: 2200000.0}
+    margin_s: 0.05          # bad mask is widened by this much on each side

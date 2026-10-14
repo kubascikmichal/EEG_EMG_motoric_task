@@ -1,0 +1,20 @@
+[project]
+name = "emgeeg"
+version = "0.1.0"
+description = "EEG / EMG hand-movement classification"
+requires-python = ">=3.11"
+dependencies = ["numpy", "pandas", "scipy", "pyyaml"]
+
+[project.optional-dependencies]
+models = ["scikit-learn", "mne", "pyriemann", "torch", "braindecode", "matplotlib"]
+test = ["pytest"]
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
