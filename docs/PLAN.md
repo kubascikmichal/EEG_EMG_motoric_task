@@ -30,13 +30,13 @@ and linear/statistical models vs. neural networks.
   - Effective rates: EEG 249.99–250.01 Hz; EMG 499.84–500.01 Hz (up to 320 ppm slow, i.e. ~0.1 s over 5 min), so each run uses its fitted rate.
   - Arrival jitter is ~25–33 ms SD; the EMG clock wanders by up to ~70 ms within a run, which a 20 s running-median correction follows.
   - Not independently verified yet: an EMG-envelope vs. EEG high-frequency-power cross-correlation showed no coupling (|r| ≤ 0.25, scattered lags), so it can't confirm the timing either way. The remaining check is in step 2.
-- **Naming collision:** sub-1 ses-S002 has two different recordings both named `run-001` ([time removed] and [time removed]).
+- **Naming collision:** sub-1 ses-S002 has two different recordings both named `run-001` (now run-01 and run-02).
 - Sessions are interleaved within one evening; per the user, all sessions are the same task (see decision 2).
 - **Signal quality:**
   - Scaling resolved: the `.db` is in µV as its metadata says; the CSV export is in V. EEG has a DC offset of ~15–26 mV (DC-coupled), no clipping.
   - EEG `contact_*` is always 0, so it carries no information. EMG `contact_*` is 1 except inside filler blocks.
-  - EMG `Streaming=0` blocks (sub-1 ses-1 r2, sub-1 ses-2 [time removed], sub-2 ses-1 r3, sub-3 ses-2 r2) are **filler, not lost data**: always 100 zero samples, with the signal continuous across them, plus `Sample` counter jumps of −99. They are removed (4200 samples in total).
-  - EMG clips at −2.25 V in one 25–31-sample stretch on one channel (sub-1 ses-1 r1, sub-1 ses-2 [time removed]). It is marked in the `bad` column.
+  - EMG `Streaming=0` blocks (sub-1 ses-1 r2, sub-1 ses-2 r2, sub-2 ses-1 r3, sub-3 ses-2 r2) are **filler, not lost data**: always 100 zero samples, with the signal continuous across them, plus `Sample` counter jumps of −99. They are removed (4200 samples in total).
+  - EMG clips at −2.25 V in one 25–31-sample stretch on one channel (sub-1 ses-1 r1, sub-1 ses-2 r2). It is marked in the `bad` column.
   - EMG at 500 Hz is limited to about 250 Hz (fine for envelope and time-domain features).
 - The raw dataset with its original names is in git history (commit `2cc18d4`).
 
@@ -46,7 +46,7 @@ and linear/statistical models vs. neural networks.
 |---|----------|--------|
 | 1 | Label source | **No protocol timing is available. Labels come from the EMG envelope** (step 2a). Caveat: the EMG-only model is then partly predicting its own labels, so its scores are inflated and the comparisons of EEG vs. EMG vs. fusion are biased toward EMG. Mitigations are in step 2a. |
 | 2 | Session meaning | **All sessions are the same task/condition**; each recording = EEG + EMG of the same activity. Sessions are treated as equivalent repetitions (more data per subject, usable as CV folds). Note: alignment uses the `.db` chunk arrival clock (see section 1, Sync). |
-| 3 | Duplicate run-001 (sub-1 ses-2) | **Number runs by session**: within each subject + session, runs are numbered in time order. Result: sub-1 ses-2 [time removed] → run-01, [time removed] → run-02. All other recordings already follow this rule, so their numbers don't change. |
+| 3 | Duplicate run-001 (sub-1 ses-2) | **Number runs by session**: within each subject + session, runs are numbered in time order. Result: sub-1 ses-2 earlier → run-01, later → run-02. All other recordings already follow this rule, so their numbers don't change. |
 | 4 | Output layout and format | **`dataset/processed/ses-XX/` + CSV**: `dataset/processed/ses-01/sub-01_ses-01_task-fusion_run-01_{EEG,EMG}.csv` plus a sidecar `.json` (sf, channels, start offset relative to the run). Implemented. |
 | 5 | Existing `csv/original/`, `csv/transformed/` and `raw/` | **Add all three to `.gitignore`** and purge them from history (decision 6). They stay on disk, since the build still reads `raw/*.db`, but are no longer tracked. |
 | 6 | Git history | **Rewrite history** (e.g. `git filter-repo`) to purge the original filenames and data, then force-push. Do this after step 1 is done and verified, and confirm with the owner right before running it. |

@@ -9,10 +9,10 @@ from emgeeg.sync import fit_timing
 
 def test_runs_numbered_by_time_within_session():
     names = [
-        "subj-1_ses-S002_task-Fusion_run-001_YYYYMMDD_HHMMSS_eeg.db",
-        "subj-1_ses-S002_task-Fusion_run-001_YYYYMMDD_HHMMSS_eeg.db",
-        "subj-1_ses-S001_task-Fusion_run-002_YYYYMMDD_HHMMSS_eeg.db",
-        "subj-1_ses-S001_task-Fusion_run-001_YYYYMMDD_HHMMSS_eeg.db",
+        "subj-1_ses-S002_task-Fusion_run-001_20000101_120500_eeg.db",
+        "subj-1_ses-S002_task-Fusion_run-001_20000101_110000_eeg.db",
+        "subj-1_ses-S001_task-Fusion_run-002_20000101_113000_eeg.db",
+        "subj-1_ses-S001_task-Fusion_run-001_20000101_100000_eeg.db",
     ]
     ids = assign_run_ids([Path(n) for n in names])
     assert ids[Path(names[1])] == RunId(1, 2, "fusion", 1)
